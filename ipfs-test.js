@@ -1,9 +1,7 @@
-const IPFS = require('ipfs');
 const path = require('path');
 const tar = require('tar');
-const fs = require('fs');
-
-const node = new IPFS();
+const fs = require('fs-extra');
+const os = require('os');
 
 /**
  * @TODO Combine tar with ipfs
@@ -11,32 +9,63 @@ const node = new IPFS();
  * Second create a readable stream from ipfs that gets pulled through tar and extracted
  */
 
-node.on('ready', async () => {
-  const version = await node.version();
+const appData = process.env.APPDATA || (process.platform === 'darwin' ? process.env.HOME + 'Library/Preferences' : '/var/local');
+const cachePath = path.join(appData, 'cattle', '.cache');
+const dataPath = path.join(__dirname, '.data');
 
-  console.log('Version:', version.version);
-  const pkg = './.data/cattle-1.0.0.tgz';
+const pkg = {
+  name: 'cattle',
+  version: '1.0.0',
+  tarball: () =>  `${pkg.name}-${pkg.version}.tgz`,
+  cachePath: () => path.join(cachePath, pkg.tarball()),
+};
 
-  /*const filesAdded = await node.files.add({
-    path: 'hello.txt',
-    content: Buffer.from('Hello World 101')
-  });*/
+function extractTarball(stream) {
+  stream.pipe(
+    tar.extract({
+      strip: 1,
+      cwd: dataPath,
+    }),
+  );
+}
 
-  await tar.create({
-    gzip: true,
-    file: pkg,
-  }, ['./packages/cli']);
+(async () => {
+  const tarballPath = pkg.cachePath();
+  const isCached = await fs.pathExists(tarballPath);
 
-  const stream = fs.createReadStream(pkg);
-  const filesAdded = await node.files.add({
-    path: pkg,
-    content: stream,
-  });
+  if (!isCached) {
+    const IPFS = require('ipfs');
+    const node = new IPFS();
 
-  console.log('Added file:', filesAdded[0].path, filesAdded[0].hash);
+    node.on('ready', async () => {
+      await fs.ensureDir(cachePath);
+      const version = await node.version();
+      console.log('Version:', version.version);
 
-  const fileBuffer = await node.files.cat(filesAdded[0].hash);
-  await tar.extract();
+      await tar.create({
+        gzip: true,
+        file: tarballPath,
+      }, ['./packages/cli']);
 
-  console.log('Added file contents:', fileBuffer.toString());
-});
+      const stream = fs.createReadStream(tarballPath);
+      const filesAdded = await node.files.add({
+        path: pkg.tarball(),
+        content: stream,
+      });
+
+      console.log('Added file:', filesAdded[0].path, filesAdded[0].hash);
+
+      const readableTarball = await node.files.catReadableStream(filesAdded[0].hash);
+      extractTarball(readableTarball);
+
+      console.log('Succesfully installed: ' + `${pkg.name}@${pkg.version}`);
+
+      await node.stop();
+    });
+  } else {
+    const stream = fs.createReadStream(tarballPath);
+    extractTarball(stream);
+
+    console.log('Succesfully installed: ' + `${pkg.name}@${pkg.version}` + ' from cache');
+  }
+})();
