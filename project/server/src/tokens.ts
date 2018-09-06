@@ -1,0 +1,1 @@
+export const IPFS_NODE = Symbol.for('IPFS_NODE');

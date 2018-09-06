@@ -1,0 +1,27 @@
+version: "3"
+services:
+  db:
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: SKZKVdTp_SyH5gSZ
+      MYSQL_DATABASE: vulture
+      MYSQL_USER: root
+      MYSQL_PASSWORD: JO2iglui6zPV
+    volumes:
+    - db_data:/var/lib/mysql/data
+  app:
+    depends_on:
+    - db
+    build: .
+    ports:
+    - 3000
+    restart: always
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_NAME: vulture
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: JO2iglui6zPV
+volumes: db_data:

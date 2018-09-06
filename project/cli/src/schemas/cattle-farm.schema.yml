@@ -1,0 +1,14 @@
+name: 'cattle-farm'
+properties:
+  name:
+    - type: 'isString'
+  version:
+    - type: 'isString'
+  description:
+    - type: 'isString'
+  license:
+    - type: 'isString'
+  files:
+    - type: 'isString'
+      each: true
+  # dependencies:

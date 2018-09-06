@@ -1,0 +1,10 @@
+name: 'cattle-lockfile'
+properties:
+  name:
+    - type: 'isString'
+  version:
+    - type: 'isString'
+  integrity:
+    - type: 'isString'
+  # dependencies:
+  # - type: ''
